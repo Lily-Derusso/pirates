@@ -1,18 +1,17 @@
-
 from game import location
 import game.config as config
 from game.display import announce
 from game.events import *
 from game.items import Item
+import game.items
 from game.events import lily_pirate_crew
 from game.events.lily_pirate_crew import Lily_prate_crew
 from game.combat import *
-#import game.crewmate as crewmate
-#from game.player import Player
 
 class Lily_island (location.Location):
 
     def __init__ (self, x, y, w):
+        '''init island with 2 puzzle rooms and an optional encounter'''
         super().__init__(x, y, w)
         self.name = "island"
         self.symbol = 'I'
@@ -28,8 +27,8 @@ class Lily_island (location.Location):
         self.locations['sub_basement_east'] = Sub_basement_east(self)
         self.locations['sub_basement_south'] = Sub_basement_south(self)
         #self.locations['thief_ship'] = Thief_ship(self)
-        ##make location
 
+        #island variables
         self.gold = False
         self.light = False
         self.puzzleN_done = False
@@ -39,9 +38,13 @@ class Lily_island (location.Location):
         self.thieves_beat = False
         self.flead = False
         self.map = False
+        self.gold_taken = False
 
-        #self.gold = Lily_island.Gold()        
-        #self.diamonds = Lily_island.Diamonds()        
+        #island items
+        self.gold = Gold()   
+        self.daimond_eyes = Diamonds()     
+        self.treasure = Treasure()    
+          
 
     def enter (self, ship):
         print ("arrived at an island")
@@ -66,13 +69,9 @@ class Arival_beach(location.SubLocation):
         self.verbs['explore the ship'] = self
         self.verbs['go on ship'] = self
         self.verbs['explore'] = self
-        #self.verbs['to building'] = self
-        #event chance and events TBD
-        #testing remove before submission
-        self.verbs['skip'] = self
 
     def enter(self):
-        discription = "You arrive at the beach."
+        discription = "\nYou arrive at the beach.\n"
         if self.main_location.flead == False and self.main_location.treasure_taken == False:
             discription += "\nYour ship is anchored next to another pirate ship at the west side of the island."
             discription += "\nYou can't see a way to go on the ship but you hear angry shouts about hidden treasure."
@@ -82,7 +81,7 @@ class Arival_beach(location.SubLocation):
             discription += "\nYour ship is anchored next to another pirate ship at the west side of the island."
             discription += "\nThe ship next to yours appears empty now."
             #discription += "\nThe ship next to yours now has the gangplank down. You can now 'go explore' the ship."        
-        discription += "\nYou can see the top of a building in the center of the island."
+        discription += "\nYou can see the top of a building in the center of the island.\n"
         announce(discription)
 
     def process_verb(self, verb, cmd_list, nouns):
@@ -91,16 +90,12 @@ class Arival_beach(location.SubLocation):
             config.the_player.next_loc = config.the_player.ship
             config.the_player.visiting = False
         if (verb == "north" or verb == "south"):
-            announce ("You walk all around the island on the beach. You notice a building in the center of the island")
+            announce ("You walk all around the island on the beach. You notice a building in the center of the island.\n")
         if (verb == "east" or verb == "to building"):
             config.the_player.next_loc = self.main_location.locations["church"]
-        ##remove before finalized
-        if (verb == 'skip'):
-            self.main_location.puzzleN_done = True
-            self.main_location.puzzleE_done = True
-            config.the_player.next_loc = self.main_location.locations['sub_basement_south']
 
 class Church(location.SubLocation):
+    '''outside of church. can either go inside or downstairs'''
     def __init__(self, m):
         super().__init__(m)
         self.name = "church"
@@ -109,12 +104,10 @@ class Church(location.SubLocation):
         self.verbs['east'] = self
         self.verbs['west'] = self
         self.verbs["in cellar"] = self
-        #items and verbs TBD
 
     def enter(self):
-        description = "You walk to the building. It is a weathered building with the front doors hanging off their hinges."
-        description = description + "\nYou also spot an enterance to the buildings cellar.\nWould you like to go inside or go downstairs?"
-        #posible spawn items
+        description = "\nYou walk to the building. It is a weathered building with the front doors hanging off their hinges."
+        description = description + "\nYou also spot an enterance to the buildings cellar.\n\nWould you like to go inside or go downstairs?\n"
         announce(description)
 
     def process_verb(self, verb, cmd_list, nouns):
@@ -127,10 +120,9 @@ class Church(location.SubLocation):
             config.the_player.next_loc = self.main_location.locations["basement"]
         if (verb == "inside" or verb == "into the church" or verb == "inside church" or verb == 'in'):
             config.the_player.next_loc = self.main_location.locations["church_inside"]
-            #announce("heading inside")
 
 class Church_inside(location.SubLocation):
-    #gold: make item class with shilling value. then add item to inventory
+    '''location contains a note talking about treasure downstairs as well as a gold disk'''
     def __init__(self, m):
         super().__init__(m)
         self.name = "church_inside"
@@ -141,24 +133,22 @@ class Church_inside(location.SubLocation):
         self.verbs['north'] = self
         self.verbs['south'] = self
         self.verbs['west'] = self
-        #self.verbs['paper'] = self
-        #items and verbs TBD
+        #room variables
         self.note = True
         
 
     def enter(self):
-        description = "You walk through the broken doors and enter what used to be a church. The room is lit by light streaming in through the large holes in the roof."
+        description = "\nYou walk through the broken doors and enter what used to be a church. The room is lit by light streaming in through the large holes in the roof.\n"
         note = "\nAs you enter you spot a person in tattered robes sitting on a rotting pew with their back facing you. They say nothing but maybe you can talk with them."
-        gold = "\nYou also spot the shine of gold on the puplit across the room from where you stand."
-        if self.main_location.gold == False and self.note ==True:
+        gold = "\nYou spot the shine of gold on the puplit across the room from where you stand."
+        if self.main_location.gold_taken == False and self.note ==True:
             announce(description + note + gold)
-        elif self.main_location.gold == True and self.note == False:
+        elif self.main_location.gold_taken == False and self.note == False:
             announce(description + gold)
-        elif self.main_location.gold == False and self.note == True:
+        elif self.main_location.gold_taken == True and self.note == True:
             announce(description + note)
         else:
             announce(description)
-        #posible spawn items
 
     def process_verb(self, verb, cmd_list, nouns):
         if (verb == "west" or verb == 'back' or verb == 'outside'):
@@ -169,32 +159,32 @@ class Church_inside(location.SubLocation):
             config.the_player.next_loc = self.main_location.locations["church"]
             config.the_player.go = True
         if (verb == "talk"):
-            announce("As you approch the person you realize this person has been dead a long time. They are cluching a peice of paper in their hand.")
+            announce("\nAs you approch the person you realize this person has been dead a long time. They are cluching a peice of paper in their hand.\n")
 
         if verb == "take":
-            if self.note == False and self.gold == False:
+            if self.note == False and self.main_location.gold_taken == True:
                 announce ("You don't see anything to take.")
             elif len(cmd_list) > 1:
                 at_least_one = False #Track if you pick up an item, print message if not.
                 if self.note != False and (cmd_list[1] == 'note' or cmd_list[1] == 'paper' or cmd_list[1] == "all"):
-                    announce ("You take the note from the corpse.")
-                    announce('The note reads "Pirates have attacked but I know they will never find the treasure hidden below the church."')
-                    #config.the_player.add_to_inventory([item])
+                    announce ("\nYou take the note from the corpse.\n")
+                    announce('The note reads "The other monks went to claim the treasure below the cellar.\nThey have not come back and I am losing hope. I will join my brothers soon."\n')
                     self.note = False
-                    #moves time forward
                     config.the_player.go = True
                     at_least_one = True
-                if self.main_location.gold != True and (cmd_list[1] == 'gold' or cmd_list[1] == "all"):
-                    announce ("You pick up a golden plate from the pulpit. It has strange writing on it.")
-                    #config.the_player.add_to_inventory([item])
-                    self.main_location.gold = True
+                if self.main_location.gold_taken == False and (cmd_list[1] == 'gold' or cmd_list[1] == "all"):
+                    announce ("\nYou pick up a golden plate from the pulpit. It has strange writing on it.\n")
+                    config.the_player.add_to_inventory([self.main_location.gold])
+                    self.main_location.gold_taken = True
+                    announce("50 shillings of gold has been added to your inventory.\n")
                     config.the_player.go = True
                     at_least_one = True
                 if at_least_one == False:
-                    announce ("You don't see one of those around.")
+                    announce ("\nYou don't see one of those around.")
 
 
 class Church_basement(location.SubLocation):
+    '''basement, small puzzle to find hidden door behind shelf'''
     def __init__(self, m):
         super().__init__(m)
         self.name = "basement"
@@ -208,6 +198,7 @@ class Church_basement(location.SubLocation):
         self.verbs['move shelf'] = self
         self.verbs["follow"] = self
         self.verbs["open"] = self
+        #location variables 
         self.hint1 = False
         self.hint2 = False
         self.hint = 0
@@ -215,10 +206,10 @@ class Church_basement(location.SubLocation):
         
 
     def enter(self):
-        description = "As you get to the bottom of the stairs you see a large room with rows of shelves lining the walls and junk littering dusty stone floor."
-        description += f"\nYou spot that there are footprints visible in the dust."
-        hint1 = "\nThere is a strange breeze running through this cellar."
-        hint2 = "\nA wooden shelf in the back of the room looks like it can be pulled from the wall."
+        description = "\nAs you get to the bottom of the stairs you see a large room with rows of shelves lining the walls and junk littering dusty stone floor."
+        description += f"\nYou spot that there are footprints visible in the dust.\n"
+        hint1 = "\nThere is a strange breeze running through this cellar.\n"
+        hint2 = "\nA wooden shelf in the back of the room looks like it can be pulled from the wall.\n"
         found = "\nNow that you moved the shelf there is a passage at the east end of the room"
         self.hint += 1
         if self.found == False:
@@ -237,7 +228,7 @@ class Church_basement(location.SubLocation):
             config.the_player.go = True
         if (verb == "shelf" or verb == 'move shelf' or verb == 'search' or verb == "follow" or verb == "open"):
             self.found = True
-            announce("You find a hidden stairwell behind a shelf! Now that you moved the shelf there is a passage at the east end of the room")
+            announce("\nYou find a hidden stairwell behind a shelf! Now that you moved the shelf there is a passage at the east end of the room\n")
         if (verb == 'east' or verb == 'to the passage' or verb == 'down'):
             if self.found == False:
                 if self.hint > 0:
@@ -253,10 +244,12 @@ class Church_basement(location.SubLocation):
             if self.hint > 1:
                 self.hint2 = True
             if self.hint > 2 and self.found == False:
-                announce("Maybe you should search the room?")
+                announce("\nMaybe you should search the room?")
             config.the_player.go = True
 
 class Sub_basement(location.SubLocation):
+    '''main room in sub basement. need to take lantern to see. contains a north and east puzzle room.
+    once rooms are completed southern treasure/combat room is unlocked'''
     def __init__(self, m):
         super().__init__(m)
         self.name = "sub_basement"
@@ -275,16 +268,16 @@ class Sub_basement(location.SubLocation):
 
     def enter(self):
         description = "At the end of the passage is a large dark room. You can't see very far in the darkness."
-        description += f"\nHanging on the wall next to you is an unlit lantern."
+        description += f"\nHanging on the wall next to you is an unlit lantern.\n"
         lantern = f"\nThe light shines on hundreds of sharp spikes sticking out of the ground."
         lantern += f"\nThere is a narrow pathway that between all of the spikes. The path leads to 2 doors. \nOne door to the north."
-        lantern += f"\nOne door to the east."
+        lantern += f"\nOne door to the east.\n"
         if self.main_location.puzzleN_done == True and self.main_location.puzzleE_done == True:
-            lantern += f"\nThere is now a door on the southern wall"
+            lantern += f"\nThere is now a door on the southern wall\n"
         if self.main_location.puzzleN_done == True and self.main_location.puzzleE_done == False:
-            announce("A new path has appeared. It doesn't seem to lead to anything yet.")
+            announce("A new path has appeared. It doesn't seem to lead to anything yet.\n")
         if self.main_location.puzzleN_done == False and self.main_location.puzzleE_done == True:
-            announce("A new path has appeared. It doesn't seem to lead to anything yet.")
+            announce("A new path has appeared. It doesn't seem to lead to anything yet.\n")
         
         if self.main_location.light == True:
             announce(lantern)
@@ -297,7 +290,7 @@ class Sub_basement(location.SubLocation):
             config.the_player.go = True
         if (verb == "take lantern" or verb == 'grab lantern' or verb == 'grab' or verb == "lantern" or verb == "take"):
             self.main_location.light = True
-            announce("You take the rusted lantern off the wall and light it. The ghostly light illuminates the room.")
+            announce("\nYou take the rusted lantern off the wall and light it. The ghostly light illuminates the room.")
             self.enter()
         if self.main_location.light == True:
             if (verb == 'north'):
@@ -308,12 +301,13 @@ class Sub_basement(location.SubLocation):
                 config.the_player.go = True
             if (verb == 'south'):
                 config.the_player.next_loc = self.main_location.locations["sub_basement_south"]
-                #announce("Location under construction. Come back later.")
                 config.the_player.go = True
         else:
-            announce("It's to dark to safely go that way.")
+            announce("\nIt's to dark to safely go that way.\n")
 
 class Sub_basement_north(location.SubLocation):
+    '''norther puzzle room. press button and spiked walls close in on player. pressing button only resets walls.
+    to solve the player has to wait instead of pressing the button'''
     def __init__(self, m):
         super().__init__(m)
         self.name = "sub_basement_north"
@@ -337,9 +331,9 @@ class Sub_basement_north(location.SubLocation):
     def enter(self):
         if self.main_location.puzzleN_done == False:
             if self.button_pressed == True:
-                announce("With a loud groan the walls move closer to you.")
+                announce("\nWith a loud groan the walls move closer to you!!\n")
             else:
-                description = "You enter a rectangular roon and the door slams behind you. In front of you is a pedestal with a button on it."
+                description = "\nYou enter a rectangular roon and the door slams behind you. In front of you is a pedestal with a button on it.\n"
                 announce(description)
         else:
             announce("There is nothing left for you in this room")
@@ -347,40 +341,41 @@ class Sub_basement_north(location.SubLocation):
     def process_verb(self, verb, cmd_list, nouns):
         if (verb == "south" or verb == 'back' or verb == 'outside' or verb == 'leave'):
             if self.main_location.puzzleN_done == False:
-                announce("The door behind you is sealed shut")
+                announce("\nThe door behind you is sealed shut\n")
             else:
                 config.the_player.next_loc = self.main_location.locations["sub_basement"]
                 config.the_player.go = True
         if (verb == "press" or verb == 'press button'):
             if self.button_pressed == False:
                 self.button_pressed = True
-                #self.enter()
                 config.the_player.go = True
             else:
-                announce("The walls slowly move back to where they started. Then begin moving towards you again!")
+                announce("\nThe walls slowly move back to where they started. Then begin moving towards you again!\n")
                 self.press += 1
                 if self.press >= 1:
-                    announce("Maybe there is a trick to geting out of this room?")
+                    announce("Maybe there is a trick to geting out of this room?\n")
                     self.press += 1
                 if self.press >= 3:
-                    announce('You wonder "What would happen if I just wait?"')
+                    announce('You wonder "What would happen if I just wait?"\n')
                     self.press += 1
         if (verb == 'wait' or verb == 'do nothing' or verb == 'nothing'):
-            announce("As you wait the walls move closer and closer then suddenly stop right before squishing you!")
-            announce('A booming voice speaks from the pedistal. "You have proven your bravery. You pass this trial!')
+            announce("\nAs you wait the walls move closer and closer then suddenly stop right before squishing you!")
+            announce('A booming voice speaks from the pedistal. "You have proven your bravery. You pass this trial!\n')
             if self.main_location.puzzleE_done == True:
-                announce("You have proven yourself worthy to of the treasure in our southern room!")
-            announce("The walls move back into place and you hear the door behind you unlock.")
+                announce("\nYou have proven yourself worthy to of the treasure in our southern room!")
+            announce("\nThe walls move back into place and you hear the door behind you unlock.\n")
             self.main_location.puzzleN_done = True
 
         else:
             if self.main_location.puzzleN_done == False and verb != "press" and verb != "press button":
-                announce("The walls continue to close in!")
+                announce("\nThe walls continue to close in!!!\n")
                 self.hint += 1
                 if self.hint >= 2 and self.press < 3:
-                    announce("Maybe pressing the button again will help?")
+                    announce("\nMaybe pressing the button again will help?\n")
 
 class Sub_basement_east(location.SubLocation):
+    '''eastern puzzle room. must answer 3 riddles (all, egg, sound) to complete room.
+    daimond eyes are an item if players choose to take them'''
     def __init__(self, m):
         super().__init__(m)
         self.name = "sub_basement_east"
@@ -421,28 +416,28 @@ class Sub_basement_east(location.SubLocation):
     def enter(self):
         if self.main_location.treasure_taken == False:
             if self.speach == False:
-                description = "You enter a rectangular room and the door slams behind you. In front of you is a large stone face with diamond inlaid eyes."
+                description = "\nYou enter a rectangular room and the door slams behind you. In front of you is a large stone face with diamond inlaid eyes."
                 mouth = f"\nAs The door seals behind you the mouth moves and speaks:"
-                task = f"\nIn order to pass this trial you must prove yourself in a test of knowlege!"
+                task = f"\nIn order to pass this trial you must prove yourself in a test of knowlege!\n"
                 announce(description + mouth + task)
                 self.speach = True
             if self.riddle1_done == False and self.riddle2_done == False and self.riddle3_done == False:
-                riddle1 = "My first riddle: What month has 28 day?" #all of them
+                riddle1 = "My first riddle: What month has 28 day?\n" #all of them
                 announce(riddle1)
             if self.riddle1_done == True and self.riddle2_done == False and self.riddle3_done == False:
-                riddle2 = "My second riddle: What do you break before you use it?" #egg
+                riddle2 = "\nMy second riddle: What do you break before you use it?\n" #egg
                 announce(riddle2)
             if self.riddle1_done == True and self.riddle2_done == True and self.riddle3_done == False:
-                riddle3 = "My third and final riddle: You can hear me, but you cannot see or touch me. What am I?" #voice
+                riddle3 = "\nMy third and final riddle: You can hear me, but you cannot see or touch me. What am I?\n" #voice
                 announce(riddle3)
             if self.riddle3_done == True and self.main_location.daimonds_taken == False :
                 if self.main_location.puzzleN_done == True:
-                    done = "You have proven yourself. You may now take the treasure in the southern room."
+                    done = "\nYou have proven yourself. You may now take the treasure in the southern room.\n"
                     announce(done)
                 else:
-                    announce("Well done! Only one trial left.")
+                    announce("\nWell done! Only one trial left.\n")
         else:
-            announce("There is nothing left for you in this room.")
+            announce("\nThere is nothing left for you in this room.\n")
         
     def process_verb(self, verb, cmd_list, nouns):
         if (verb == "west" or verb == 'back' or verb == 'outside' or verb == 'leave' or verb == "go west"):
@@ -450,75 +445,77 @@ class Sub_basement_east(location.SubLocation):
                 config.the_player.next_loc = self.main_location.locations["sub_basement"]
                 config.the_player.go = True
             else:
-                announce("The door behind you is sealed shut")
+                announce("\nThe door behind you is sealed shut.\n")
         if self.riddle1_done == False: #all months
             if (verb == "all" or verb == 'all of them' or verb == 'all months' or verb == '12' or verb == '12 months'):
-                response = "Well done! Another one!"
+                response = "\nWell done! Another one!\n"
                 self.riddle1_done = True
                 self.hint = 0
                 announce(response)
-                #self.enter()
                 config.the_player.go = True
             if (verb == "february" or verb == "one" or verb == "1"):
                 if self.hint > 0:
-                    announce("The stone face remains silent.")
+                    announce("\nThe stone face remains silent.\n")
                 if self.hint >= 1 and self.hint < 2:
-                    announce("Maybe were not thinking about the question right?")
+                    announce("\nMaybe were not thinking about the question right?\n")
                 if self.hint >= 2:
-                    announce('A voice in you head says "All months have 28 days, right?"')
+                    announce('\nA voice in you head says "All months have 28 days, right?\n"')
                 self.hint += 1
                 config.the_player.go = True
 
         if self.riddle1_done == True and self.riddle2_done == False: #egg
             if (verb == "egg" or verb == 'a egg' or verb == 'an egg'):
-                response = "Well done! One more!"
+                response = "\nWell done! One more!\n"
                 self.riddle2_done = True
                 self.hint = 0
                 announce(response)
-                #self.enter()
                 config.the_player.go = True
             else:
                 if self.hint > 0:
-                    announce("The stone face remains silent.")
+                    announce("\nThe stone face remains silent.\n")
                 if self.hint >= 1 and self.hint < 2:
-                    announce("Maybe were not thinking about the question right?")
+                    announce("\nMaybe were not thinking about the question right?n")
                 if self.hint >= 2 and self.hint < 3:
-                    announce('Your stomach rumbles. You think "Damn, I wish I had an egg for breakfast"')
+                    announce('\nYour stomach rumbles. You think "Damn, I wish I had an egg for breakfast."\n')
                 if self.hint >= 3:
-                    announce("Oh! The answer is an egg!")
+                    announce("\nOh! The answer is an egg!\n")
                 self.hint += 1
                 config.the_player.go = True
 
         if self.riddle1_done == True and self.riddle2_done == True and self.riddle3_done == False: #voice
             if (verb == "voice" or verb == 'speach' or verb == 'sound'):
                 self.main_location.puzzleE_done =True
-                response = "Excellent! You've done it!"
+                response = "\nExcellent! You've done it!"
                 self.riddle3_done = True
                 self.hint = 0
                 announce(response)
-                #self.enter()
                 config.the_player.go = True
             else:
                 if self.hint > 0:
-                    announce("The stone face remains silent.")
+                    announce("\nThe stone face remains silent.\n")
                 if self.hint >= 1 and self.hint < 2:
-                    announce("Maybe were not thinking about the question right?")
+                    announce("\nMaybe were not thinking about the question right?\n")
                 if self.hint >= 2 and self.hint < 3:
-                    announce('Your head begins hurting from the voice shouting in this room.')
+                    announce('\nYour head begins hurting from the voice shouting in this room.\n')
                 if self.hint >= 3:
-                    announce("Oh! The answer is sound!")
+                    announce("\nOh! The answer is sound!\n")
                 self.hint += 1
                 config.the_player.go = True
 
         if self.main_location.puzzleE_done == True:
             if self.main_location.daimonds_taken == False:
                 if (verb == 'take' or verb == "take daimond" or verb == "take daimonds" or verb == "take eyes"):
+                    config.the_player.add_to_inventory([self.main_location.daimond_eyes])
                     self.main_location.daimonds_taken == True
-                    daimonds = "With some difficulty you pry the daimond eyes out of the stones face. I hope these daimonds are worth it."
+                    daimonds = "\nWith some difficulty you pry the daimond eyes out of the stones face. I hope these daimonds are worth it.\n"
                     announce(daimonds)
+                    announce("\n2 daimonds valued at 250 shillings each have been added to your inventory.\n")
                     config.the_player.go = True
 
 class Sub_basement_south(location.SubLocation):
+    '''treasure room/ combat encounter. pirates from other ship try and steal treasure. player can choose to leave or fight.
+    if they leave the other crew take the treasure and leave on their ship.
+    if fought and defeated crew gains treasure and brought back to the beach'''
     def __init__(self, m):
         super().__init__(m)
         self.name = "sub_basement_south"
@@ -539,21 +536,21 @@ class Sub_basement_south(location.SubLocation):
     def enter(self):
         if self.main_location.treasure_taken == False:
             if self.speach == False:
-                description = "You enter the treasure chamber only to see someone has beaten you here!"
+                description = "\nYou enter the treasure chamber only to see someone has beaten you here!!!"
                 description += "\nA pirate crew stands between you and your treasure."
-                captain = '\nThe theives captain raises a sword and says\n"No need for a fight, just turn around and leave.'
-                response = "\nWhat will you do 'leave' or 'fight'?"
+                captain = '\nThe theives captain raises a sword and says\n"No need for a fight, just turn around and leave."'
+                response = "\n\nWhat will you do 'leave' or 'fight'?\n"
                 announce(description + captain + response)
                 self.speach = True
 
         else:
-            announce("There is nothing left for you in this room.")
+            announce("\nThere is nothing left for you in this room.\n")
             self.events.clear()
 
     def process_verb(self, verb, cmd_list, nouns):
         if (verb == "north" or verb == 'back' or verb == 'outside' or verb == 'leave' or verb == "go north"):    
             if self.main_location.treasure_taken == False and self.main_location.thieves_beat == False: 
-                announce("After a moment of thought, you decided some treasure wasn't worth you and your crews lives.")
+                announce("\nAfter a moment of thought, you decided some treasure wasn't worth you and your crews lives.\n")
                 self.main_location.treasure_taken = True
                 self.main_location.flead = True
                 config.the_player.next_loc = self.main_location.locations["sub_basement"]
@@ -561,10 +558,15 @@ class Sub_basement_south(location.SubLocation):
         
         if (verb == "north" or verb == 'back' or verb == 'outside' or verb == 'leave' or verb == "go north"):    
             if self.main_location.treasure_taken == False and self.main_location.thieves_beat == True: 
-                announce("You killed for this treasure. You may as well take it")
+                announce("\nYou killed for this treasure. You may as well take it.\n")
 
         if (verb == "north" or verb == 'back' or verb == 'outside' or verb == 'leave' or verb == "go north"):    
             if self.main_location.treasure_taken == True and self.main_location.thieves_beat == True: 
+                config.the_player.next_loc = self.main_location.locations["sub_basement"]
+                config.the_player.go = True        
+
+        if (verb == "north" or verb == 'back' or verb == 'outside' or verb == 'leave' or verb == "go north"):    
+            if self.main_location.treasure_taken == True and self.main_location.flead == True: 
                 config.the_player.next_loc = self.main_location.locations["sub_basement"]
                 config.the_player.go = True        
 
@@ -573,25 +575,43 @@ class Sub_basement_south(location.SubLocation):
                 self.event_chance = 100            
                 self.events.append(lily_pirate_crew.Lily_prate_crew())
                 config.the_player.go = True
-                announce('The captain shouts to their crew "Make them regret crossing us!')
+                announce('\nThe captain shouts to their crew "Make them regret crossing us!\n')
                 self.main_location.thieves_beat = True
                 
 
             else:
-                announce("There is no one left to fight.")
+                announce("\nThere is no one left to fight.\n")
 
         if (verb == "take" or verb == "take treasure" or verb == "loot"):
             if self.main_location.treasure_taken == False:
-                announce("With great effort you are able to bring all of your treasure to the ship.")
+                announce("\nWith great effort you are able to bring all of your treasure to the ship.\n")
                 self.main_location.treasure_taken = True
+                config.the_player.add_to_inventory([self.main_location.treasure])
+                announce("\n3000 shillings of treasure have been added to your inventory!\n")
                 config.the_player.next_loc = self.main_location.locations["beach"]
                 config.the_player.go = True
             else:
-                announce("The treasure has already been taken.")
+                announce("\nThe treasure has already been taken.\n")
+
+class Gold(game.items.Item):
+    '''gold disk from inside church'''
+    def __init__(self):
+        super().__init__("golden disk", 50)    
+
+class Diamonds(game.items.Item):
+    '''damond eyes from northern puzzle room'''
+    def __init__(self):
+        super().__init__("diamond eyes", 500) 
+
+class Treasure(game.items.Item):
+    '''treasure from southern room gained after defeating other pirate crew'''
+    def __init__(self):
+        super().__init__("Treasure from the church basement", 3000)
 
 
-######cut content
+######cut content due to time constrains and handling issue
 """ class Thief_ship(location.SubLocation):
+    '''crew can explore other crews ship to gain extra treasure once defeating crew and completing dungeon'''
     def __init__(self, m):
         super().__init__(m)
         self.name = "thief_ship"
@@ -644,18 +664,3 @@ class Sub_basement_south(location.SubLocation):
                 self.main_location.map = True
                 config.the_playernext_loc = self.main_location.locations["beach"]
                 config.the_player.go = True """
-
-#need to figure out how to add it as an item then add it to inventory as rewards
-#same with weapons
-#also need to make a encounter for the pirate fight
-""" class Gold(Item):
-    def __init__(self):
-        super().__init__("gold", 50)    
-
-class Diamonds(Item):
-    def __init__(self):
-        super().__init__("diamonds", 500) 
-
-class Treasure(Item):
-    def __init__(self):
-        super().__init__("Treasure from the church basement, 3000") """
